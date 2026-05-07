@@ -20,7 +20,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav className="flex gap-1 text-sm">
               <Link href="/generate" className="btn btn-ghost">Gerar</Link>
-              <Link href="/templates" className="btn btn-ghost">Modelos</Link>
               <Link href="/queue" className="btn btn-ghost">Fila / Imprimir</Link>
             </nav>
           </div>

@@ -3,21 +3,25 @@
 import { CameraCapture } from "@/components/CameraCapture";
 import { TeamPicker } from "@/components/TeamPicker";
 import { findTeam } from "@/lib/teams";
-import {
-  getTemplate,
-  pushToQueue,
-  type QueueItem,
-} from "@/lib/storage";
+import { pushToQueue, type QueueItem } from "@/lib/storage";
 import type { StickerData } from "@/lib/prompt";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Step = "team" | "photo" | "data" | "result" | "copies";
 
+type TemplateState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "found"; url: string }
+  | { status: "missing" }
+  | { status: "fallback"; dataUrl: string };
+
 export default function GeneratePage() {
   const [step, setStep] = useState<Step>("team");
   const [teamCode, setTeamCode] = useState<string>("BRA");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [tpl, setTpl] = useState<TemplateState>({ status: "idle" });
 
   const [form, setForm] = useState({
     nomePersonagem: "",
@@ -32,12 +36,23 @@ export default function GeneratePage() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copies, setCopies] = useState<number>(8);
-  const [hasTemplate, setHasTemplate] = useState<boolean>(false);
 
   const team = useMemo(() => findTeam(teamCode), [teamCode]);
 
   useEffect(() => {
-    setHasTemplate(!!getTemplate(teamCode));
+    let cancelled = false;
+    setTpl({ status: "loading" });
+    fetch(`/api/templates/${teamCode}`)
+      .then((r) => r.json())
+      .then((j: { exists: boolean; url?: string }) => {
+        if (cancelled) return;
+        if (j.exists && j.url) setTpl({ status: "found", url: j.url });
+        else setTpl({ status: "missing" });
+      })
+      .catch(() => !cancelled && setTpl({ status: "missing" }));
+    return () => {
+      cancelled = true;
+    };
   }, [teamCode]);
 
   function next(s: Step) {
@@ -45,12 +60,23 @@ export default function GeneratePage() {
     setStep(s);
   }
 
+  function onFallbackUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setTpl({ status: "fallback", dataUrl: reader.result });
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function generate() {
     setError(null);
     if (!team) return;
-    const tpl = getTemplate(teamCode);
-    if (!tpl) {
-      setError("Cadastre o modelo dessa seleção em Modelos antes de gerar.");
+    if (tpl.status !== "found" && tpl.status !== "fallback") {
+      setError("Modelo da seleção indisponível.");
       return;
     }
     if (!photo) {
@@ -82,14 +108,14 @@ export default function GeneratePage() {
 
     setGenerating(true);
     try {
+      const payload: Record<string, unknown> = { data, personImage: photo };
+      if (tpl.status === "found") payload.templateTeamCode = team.code;
+      else if (tpl.status === "fallback") payload.templateImage = tpl.dataUrl;
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          data,
-          templateImage: tpl.imageDataUrl,
-          personImage: photo,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Falha na geração");
@@ -114,6 +140,8 @@ export default function GeneratePage() {
     pushToQueue(items);
   }
 
+  const canContinueFromTeam = tpl.status === "found" || tpl.status === "fallback";
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -124,21 +152,15 @@ export default function GeneratePage() {
       {step === "team" && (
         <div className="card space-y-4">
           <TeamPicker value={teamCode} onChange={setTeamCode} />
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-white/70">
-              {team?.flag} {team?.name}{" "}
-              {hasTemplate ? (
-                <span className="text-emerald-300 ml-1">· modelo cadastrado</span>
-              ) : (
-                <span className="text-amber-300 ml-1">
-                  · sem modelo —{" "}
-                  <Link className="underline" href="/templates">
-                    cadastrar
-                  </Link>
-                </span>
-              )}
-            </p>
-            <button className="btn btn-primary" onClick={() => next("photo")} disabled={!hasTemplate}>
+
+          <TemplateStatus team={team?.name || ""} code={teamCode} state={tpl} onUpload={onFallbackUpload} />
+
+          <div className="flex justify-end">
+            <button
+              className="btn btn-primary"
+              onClick={() => next("photo")}
+              disabled={!canContinueFromTeam}
+            >
               Continuar
             </button>
           </div>
@@ -239,6 +261,60 @@ export default function GeneratePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TemplateStatus({
+  team, code, state, onUpload,
+}: {
+  team: string;
+  code: string;
+  state: TemplateState;
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  if (state.status === "loading" || state.status === "idle") {
+    return <p className="text-sm text-white/60">Verificando modelo de {team}...</p>;
+  }
+  if (state.status === "found") {
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-emerald-500/10 border border-emerald-400/20 p-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={state.url} alt={team} className="h-24 aspect-[2/3] object-cover rounded" />
+        <div className="text-sm">
+          <div className="text-emerald-300 font-semibold">Modelo de {team} carregado</div>
+          <div className="text-white/60">Será usado automaticamente como referência da figurinha.</div>
+          <code className="text-xs text-white/40">{state.url}</code>
+        </div>
+      </div>
+    );
+  }
+  if (state.status === "fallback") {
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 border border-amber-400/20 p-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={state.dataUrl} alt="modelo temporário" className="h-24 aspect-[2/3] object-cover rounded" />
+        <div className="text-sm">
+          <div className="text-amber-300 font-semibold">Modelo temporário (apenas esta sessão)</div>
+          <div className="text-white/70">
+            Para tornar permanente, salve como <code>public/templates/{code}.png</code> e faça commit no repositório.
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // missing
+  return (
+    <div className="rounded-xl bg-amber-500/10 border border-amber-400/20 p-3 space-y-2">
+      <p className="text-amber-300 font-semibold">Sem modelo cadastrado para {team}.</p>
+      <p className="text-sm text-white/70">
+        Salve a figurinha base como <code>public/templates/{code}.png</code> no repositório e faça push —
+        o Vercel atualiza no próximo deploy.
+      </p>
+      <label className="btn btn-ghost cursor-pointer w-fit">
+        Usar modelo temporário (esta sessão)
+        <input type="file" accept="image/*" className="hidden" onChange={onUpload} />
+      </label>
     </div>
   );
 }

@@ -4,15 +4,28 @@ Gerador de figurinhas personalizadas do álbum do Mundial 2026 usando `gpt-image
 
 ## Fluxo
 
-1. **Cadastrar modelo** (`/templates`): suba a figurinha base de cada seleção.
-   Essa imagem entra como **primeira imagem** do prompt da geração.
+1. **Cadastrar modelo no repositório**: salve a figurinha base de cada seleção em
+   `public/templates/{CODE}.png` (códigos em `src/lib/teams.ts`, ex: `BRA.png`, `ARG.png`).
+   Ela é usada automaticamente como **primeira imagem** do prompt.
 2. **Gerar** (`/generate`):
-   1. selecione a seleção
+   1. selecione a seleção — a referência da figurinha aparece automaticamente
    2. tire uma foto da pessoa (câmera ou upload)
    3. preencha **nome do personagem**, **dia/mês/ano**, **altura (m)**, **peso (kg)**, **time** e **país do time**
    4. clique em **Gerar figurinha**
 3. **Cópias**: depois da geração escolha quantas cópias adicionar à **fila**.
 4. **Imprimir** (`/queue`): a fila monta sozinha as folhas A4 (4×4 = 16 figurinhas por folha, 49×65 mm cada). Clique em **Imprimir** — apenas folhas inteiras devem ir para a impressora.
+
+> Se uma seleção ainda não tem modelo no repo, a tela `/generate` permite usar
+> um **modelo temporário** (apenas naquela sessão) enquanto você não commita o PNG.
+
+## Modelos das seleções
+
+- Local: `public/templates/{CODE}.{png,jpg,webp}`
+- Convenção de código: 3 letras maiúsculas (vide `src/lib/teams.ts`)
+- Proporção recomendada: **2:3** (a figurinha final é 49×65 mm)
+- Sugestão de resolução: 1024×1536+
+
+Adicionar / atualizar = commit + push. O Vercel publica no próximo deploy.
 
 ## Prompt enviado à OpenAI
 
@@ -52,14 +65,8 @@ npm run dev
 1. Crie um projeto novo no [vercel.com](https://vercel.com) apontando para este repositório.
 2. Em **Settings → Environment Variables** configure `OPENAI_API_KEY`.
 3. (Opcional) configure `OPENAI_IMAGE_MODEL` (default `gpt-image-2`).
-4. **Deploy**. A rota `/api/generate` roda em Node runtime.
-
-## Armazenamento
-
-Modelos cadastrados e a fila de impressão ficam no **localStorage** do navegador
-(o servidor não persiste imagens — só faz a chamada à OpenAI). Isso mantém o
-deploy serverless trivial e leva os dados pessoais da pessoa a ficarem só no
-dispositivo.
+4. **Deploy**. A rota `/api/generate` roda em Node runtime e lê os modelos
+   estáticos de `public/templates/` no servidor.
 
 ## Especificações técnicas
 

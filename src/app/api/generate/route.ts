@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI, { toFile } from "openai";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { buildPrompt, type StickerData } from "@/lib/prompt";
 
 export const runtime = "nodejs";
@@ -7,8 +9,10 @@ export const maxDuration = 300;
 
 type Body = {
   data: StickerData;
-  templateImage: string; // dataURL
-  personImage: string;   // dataURL
+  // Uma das duas formas de informar o modelo da seleção:
+  templateTeamCode?: string; // lê /public/templates/{CODE}.{png|jpg|webp}
+  templateImage?: string;    // dataURL (fallback temporário)
+  personImage: string;       // dataURL
 };
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string; ext: string } {
@@ -18,6 +22,24 @@ function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string; ext: 
   const base64 = m[2];
   const ext = mime.split("/")[1].replace("jpeg", "jpg");
   return { buffer: Buffer.from(base64, "base64"), mime, ext };
+}
+
+async function loadTemplateFromDisk(code: string) {
+  const dir = path.join(process.cwd(), "public", "templates");
+  const candidates = [`${code}.png`, `${code}.jpg`, `${code}.jpeg`, `${code}.webp`];
+  for (const name of candidates) {
+    const p = path.join(dir, name);
+    try {
+      const buffer = await fs.readFile(p);
+      const ext = name.split(".").pop()!.replace("jpeg", "jpg");
+      const mime =
+        ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      return { buffer, mime, ext };
+    } catch {
+      /* continua */
+    }
+  }
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -35,10 +57,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { data, templateImage, personImage } = body || {};
-  if (!data || !templateImage || !personImage) {
+  const { data, templateTeamCode, templateImage, personImage } = body || {};
+  if (!data || !personImage || (!templateTeamCode && !templateImage)) {
     return NextResponse.json(
-      { error: "Faltam campos: data, templateImage, personImage" },
+      { error: "Faltam campos: data, personImage e (templateTeamCode | templateImage)" },
       { status: 400 }
     );
   }
@@ -46,7 +68,24 @@ export async function POST(req: NextRequest) {
   const prompt = buildPrompt(data);
 
   try {
-    const tpl = dataUrlToBuffer(templateImage);
+    let tpl: { buffer: Buffer; mime: string; ext: string } | null = null;
+    if (templateTeamCode) {
+      tpl = await loadTemplateFromDisk(templateTeamCode);
+      if (!tpl) {
+        return NextResponse.json(
+          {
+            error: `Modelo não encontrado para "${templateTeamCode}". Adicione public/templates/${templateTeamCode}.png ao repositório.`,
+          },
+          { status: 404 }
+        );
+      }
+    } else if (templateImage) {
+      tpl = dataUrlToBuffer(templateImage);
+    }
+    if (!tpl) {
+      return NextResponse.json({ error: "Modelo da seleção indisponível" }, { status: 400 });
+    }
+
     const psn = dataUrlToBuffer(personImage);
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

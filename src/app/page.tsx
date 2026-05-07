@@ -14,19 +14,17 @@ export default function Home() {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/generate" className="btn btn-primary">Gerar figurinha</Link>
-          <Link href="/templates" className="btn btn-ghost">Cadastrar modelos</Link>
           <Link href="/queue" className="btn btn-gold">Fila de impressão</Link>
         </div>
       </section>
 
       <section className="grid md:grid-cols-3 gap-4">
-        <Step n={1} title="Cadastrar modelo">
-          Suba a figurinha base de cada seleção em <Link href="/templates" className="text-accent">Modelos</Link>.
-          Ela vira a primeira imagem do prompt.
+        <Step n={1} title="Selecionar seleção">
+          A referência da figurinha de cada seleção fica salva no repositório
+          (<code>public/templates/{`{CODE}`}.png</code>) e é puxada automaticamente.
         </Step>
-        <Step n={2} title="Tirar foto + preencher">
-          Em <Link href="/generate" className="text-accent">Gerar</Link>: selecione a seleção, capture a foto,
-          informe nome/dia/mês/ano/altura/peso/time/país.
+        <Step n={2} title="Foto + dados">
+          Tire uma foto da pessoa e informe nome, dia/mês/ano, altura, peso, time e país do time.
         </Step>
         <Step n={3} title="Imprimir A4">
           Cada figurinha tem 49×65mm. A folha A4 comporta 16 figurinhas (4×4). A fila completa
