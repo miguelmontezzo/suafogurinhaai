@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
         <footer className="no-print mx-auto max-w-6xl px-5 py-10 text-xs text-white/40">
-          Powered by <code>gpt-image-1</code> · Renderiza figurinhas 2:3 (49×65mm) prontas para impressão A4.
+          Powered by <code>gpt-image-2</code> · Renderiza figurinhas 2:3 (49×65mm) prontas para impressão A4.
         </footer>
       </body>
     </html>

@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
     const psn = dataUrlToBuffer(personImage);
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+    const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
 
     const result = await client.images.edit({
       model,
       prompt,
-      // gpt-image-1 aceita múltiplas imagens (template + foto da pessoa)
+      // gpt-image-2 aceita múltiplas imagens (template + foto da pessoa)
       image: [
         await toFile(tpl.buffer, `template.${tpl.ext}`, { type: tpl.mime }),
         await toFile(psn.buffer, `person.${psn.ext}`, { type: psn.mime }),

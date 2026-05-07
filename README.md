@@ -1,6 +1,6 @@
 # Sua Fogurinha AI · Mundial 2026
 
-Gerador de figurinhas personalizadas do álbum do Mundial 2026 usando `gpt-image-1` (OpenAI Images API).
+Gerador de figurinhas personalizadas do álbum do Mundial 2026 usando `gpt-image-2` (OpenAI Images API).
 
 ## Fluxo
 
@@ -25,7 +25,7 @@ Quero que você crie uma nova figura com as seguintes características:
 ...
 ```
 
-A chamada usa `images.edit` do `gpt-image-1` com **duas imagens** (template + foto da pessoa)
+A chamada usa `images.edit` do `gpt-image-2` com **duas imagens** (template + foto da pessoa)
 e tamanho **1024×1536 (2:3)**, o suficiente para impressão nítida em 49×65 mm.
 
 ## Variáveis de ambiente
@@ -34,7 +34,7 @@ Crie `.env.local` (ou configure no Vercel):
 
 ```
 OPENAI_API_KEY=sk-...
-OPENAI_IMAGE_MODEL=gpt-image-1
+OPENAI_IMAGE_MODEL=gpt-image-2
 ```
 
 ## Rodando localmente
@@ -51,7 +51,7 @@ npm run dev
 
 1. Crie um projeto novo no [vercel.com](https://vercel.com) apontando para este repositório.
 2. Em **Settings → Environment Variables** configure `OPENAI_API_KEY`.
-3. (Opcional) configure `OPENAI_IMAGE_MODEL` (default `gpt-image-1`).
+3. (Opcional) configure `OPENAI_IMAGE_MODEL` (default `gpt-image-2`).
 4. **Deploy**. A rota `/api/generate` roda em Node runtime.
 
 ## Armazenamento
@@ -67,6 +67,6 @@ dispositivo.
 |---|---|
 | Tamanho da figurinha | 49 × 65 mm |
 | Razão | 2:3 |
-| Resolução de geração | 1024 × 1536 (gpt-image-1) |
+| Resolução de geração | 1024 × 1536 (gpt-image-2) |
 | Folha de impressão | A4 (210 × 297 mm) |
 | Grid por folha | 4 colunas × 4 linhas = 16 figurinhas |
